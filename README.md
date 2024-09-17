@@ -16,8 +16,8 @@ Notes: Recursion is also passed with depth 1, to avoid excessive requests.
 
 *Usage:*
 ```
-wr -u https://example.domain.com
-wr -r urls.txt
+wr.py -u https://example.domain.com
+wr.py -r urls.txt
 ```
 
 # parse_ffuf_output.py 
