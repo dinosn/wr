@@ -92,7 +92,7 @@ def process_url(url, args, ffuf_args, scanned_paths):
                     scanned_paths.add(line)
         except FileNotFoundError:
             sys.exit(1)
-        temp_wordlist_path = temp_wordlist.name
+    temp_wordlist_path = temp_wordlist.name
 
     # Generate output filename
     date_str = datetime.datetime.now().strftime('%Y%m%d')
@@ -175,10 +175,10 @@ def process_url(url, args, ffuf_args, scanned_paths):
                     line = line.strip()
                     if line not in scanned_paths:
                         temp_wordlist.write(f"{line}\n")
-            except FileNotFoundError:
-                print(f"Larger wordlist file not found: {larger_wordlist}")
-                sys.exit(1)
-        temp_wordlist_path = temp_wordlist.name
+        except FileNotFoundError:
+            print(f"Larger wordlist file not found: {larger_wordlist}")
+            sys.exit(1)
+    temp_wordlist_path = temp_wordlist.name
 
     # Generate new output filename for the larger scan
     date_str = datetime.datetime.now().strftime('%Y%m%d')
