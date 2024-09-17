@@ -26,7 +26,12 @@ def process_url(url, args, ffuf_args, scanned_paths):
     additional_keywords = set()
     for part in domain_parts:
         if part:
-            additional_keywords.add(part.lower())
+            part_lower = part.lower()
+            additional_keywords.add(part_lower)
+            # Add variations with extensions
+            additional_keywords.add(f"{part_lower}.zip")
+            additional_keywords.add(f"{part_lower}.tar.gz")
+            additional_keywords.add(f"{part_lower}.7z")
 
     # Fetch robots.txt and parse Disallow entries
     robots_url = f"{url}/robots.txt"
@@ -170,9 +175,9 @@ def process_url(url, args, ffuf_args, scanned_paths):
                     line = line.strip()
                     if line not in scanned_paths:
                         temp_wordlist.write(f"{line}\n")
-        except FileNotFoundError:
-            print(f"Larger wordlist file not found: {larger_wordlist}")
-            sys.exit(1)
+            except FileNotFoundError:
+                print(f"Larger wordlist file not found: {larger_wordlist}")
+                sys.exit(1)
         temp_wordlist_path = temp_wordlist.name
 
     # Generate new output filename for the larger scan
