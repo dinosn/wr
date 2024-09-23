@@ -30,3 +30,5 @@ parse_ffuf_output.py *.json
 ```
 
 What is the use for it and why was created?  I need to scan several domains during the day and even though I love dirsearch and the output that is delivering, is often crashing with network timeout, where ffuf is stable, faster, easier on the filtering parameters but I really don't want to add each time FUZZ and reformat URLs just for it, or pass a lenghty path for a list each time. 
+
+### Required, httpx
