@@ -15,11 +15,9 @@ from urllib3.exceptions import InsecureRequestWarning
 from urllib.parse import urlparse
 
 def process_url(url, args, ffuf_args, scanned_paths):
-    # Prepare the URL by removing any trailing slashes and appending FUZZ
     url = url.strip().rstrip('/')
     url_with_fuzz = f"{url}/FUZZ"
 
-    # Extract subdomain and domain parts
     parsed_url = urlparse(url)
     domain = parsed_url.netloc
     domain_parts = domain.split('.')
@@ -33,7 +31,6 @@ def process_url(url, args, ffuf_args, scanned_paths):
             additional_keywords.add(f"{part_lower}.tar.gz")
             additional_keywords.add(f"{part_lower}.7z")
 
-    # Fetch robots.txt and parse Disallow entries
     robots_url = f"{url}/robots.txt"
     disallowed_paths = []
 
@@ -53,9 +50,7 @@ def process_url(url, args, ffuf_args, scanned_paths):
                         path = path.split('#')[0].strip().lstrip('/')
                         if path:
                             disallowed_paths.append(path)
-        # If status code is not 200, proceed without robots.txt entries
     except requests.RequestException:
-        # Proceed without robots.txt entries
         pass
 
     # Display the paths from robots.txt before scanning
@@ -99,17 +94,17 @@ def process_url(url, args, ffuf_args, scanned_paths):
     safe_domain = domain.replace(':', '_')
     output_filename = f"{safe_domain}_{date_str}.json"
 
-    # Base ffuf command with wordlist, URL, color option, and recursion options
+    # Small scan ffuf command without auto calibration
     ffuf_command = [
         'ffuf',
         '-w', temp_wordlist_path,
         '-u', url_with_fuzz,
-        '-c',  # Enable colored output
+        '-c',
         '-recursion',
         '-recursion-depth', '1',
         '-o', output_filename,
         '-of', 'json',
-        '-or'  # Only write output file if results are found
+        '-or'
     ]
 
     # Append any additional ffuf arguments provided by the user
@@ -118,6 +113,9 @@ def process_url(url, args, ffuf_args, scanned_paths):
     # Execute the ffuf command
     try:
         subprocess.run(ffuf_command)
+    except KeyboardInterrupt:
+        print("\nScan interrupted.")
+        return 'interrupt'
     finally:
         # Clean up the temporary wordlist file
         os.remove(temp_wordlist_path)
@@ -185,17 +183,18 @@ def process_url(url, args, ffuf_args, scanned_paths):
     safe_domain = domain.replace(':', '_')
     output_filename = f"{safe_domain}_{date_str}_larger.json"
 
-    # Update ffuf command with the new wordlist and output filename
+    # Large scan ffuf command without additional extensions and with auto calibration
     ffuf_command = [
         'ffuf',
         '-w', temp_wordlist_path,
         '-u', url_with_fuzz,
-        '-c',  # Enable colored output
+        '-c',
         '-recursion',
         '-recursion-depth', '1',
+        '-ac',  # Auto calibration
         '-o', output_filename,
         '-of', 'json',
-        '-or'  # Only write output file if results are found
+        '-or'
     ]
 
     # Append any additional ffuf arguments provided by the user
@@ -204,6 +203,9 @@ def process_url(url, args, ffuf_args, scanned_paths):
     # Execute the ffuf command
     try:
         subprocess.run(ffuf_command)
+    except KeyboardInterrupt:
+        print("\nScan interrupted.")
+        return 'interrupt'
     finally:
         # Clean up the temporary wordlist file
         os.remove(temp_wordlist_path)
@@ -227,13 +229,32 @@ def main():
     scanned_paths = set()
 
     if args.url:
-        process_url(args.url, args, ffuf_args, scanned_paths)
+        result = process_url(args.url, args, ffuf_args, scanned_paths)
+        if result == 'interrupt':
+            sys.exit(0)
     elif args.list:
         try:
             with open(args.list, 'r') as url_file:
                 urls = [line.strip() for line in url_file if line.strip()]
+            # Check if URLs start with http:// or https://
+            all_have_scheme = all(url.startswith('http://') or url.startswith('https://') for url in urls)
+            if not all_have_scheme:
+                # Use httpx to create a new file with properly formed URLs
+                temp_urls_file = tempfile.NamedTemporaryFile(mode='w+', delete=False)
+                temp_urls_file.close()
+                subprocess.run(['httpx', '-silent', '-l', args.list, '-o', temp_urls_file.name])
+                with open(temp_urls_file.name, 'r') as url_file:
+                    urls = [line.strip() for line in url_file if line.strip()]
+                os.remove(temp_urls_file.name)
             for url in urls:
-                process_url(url, args, ffuf_args, scanned_paths)
+                result = process_url(url, args, ffuf_args, scanned_paths)
+                if result == 'interrupt':
+                    print("Do you want to continue with the next URL? (y/n): ", end='', flush=True)
+                    choice = sys.stdin.readline().strip().lower()
+                    if choice != 'y':
+                        sys.exit(0)
+                    else:
+                        continue
         except FileNotFoundError:
             print(f"URL list file not found: {args.list}")
             sys.exit(1)
